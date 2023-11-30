@@ -143,13 +143,31 @@ class CommissionLineMixin(models.AbstractModel):
         self.ensure_one()
         if product.commission_free or not commission:
             return 0.0
-        if commission.amount_base_type == "net_amount":
-            # If subtotal (sale_price * quantity) is less than
-            # standard_price * quantity, it means that we are selling at
-            # lower price than we bought, so set amount_base to 0
-            subtotal = max([0, subtotal - product.standard_price * quantity])
+        if commission.amount_base_type == "net_amount" and self.env.context.get("inv_line"):
+            qty_to_take = quantity
+            cost = 0
+            inv_line = self.env.context["inv_line"]
+            for so_line in inv_line.sale_line_ids.filtered(lambda s: s.supplierinfo_ids):
+                cost += so_line.purchase_price * min(so_line.product_uom_qty, qty_to_take)
+                qty_to_take -= so_line.product_uom_qty
+                if qty_to_take <= 0:
+                    break
+            subtotal = subtotal - cost
         if commission.commission_type == "fixed":
-            return subtotal * (commission.fix_qty / 100.0)
+            percent = commission.fix_qty
+            cust_line = inv_line.move_id.line_ids.filtered(lambda s: s.account_id.user_type_id.type == "receivable")
+            days_to_payment = (max(cust_line.matched_debit_ids.mapped("max_date")) - inv_line.date_due).days
+            if inv_line and days_to_payment > 90:
+                percent = commission.fix_qty - 2
+            elif inv_line and days_to_payment > 120:
+                percent = commission.fix_qty - 4
+            elif inv_line and days_to_payment > 150:
+                percent = commission.fix_qty - 6
+            elif inv_line and days_to_payment > 180:
+                percent = commission.fix_qty - 8
+            elif inv_line and days_to_payment > 181:
+                percent = 0
+            return subtotal * (percent / 100.0)
         elif commission.commission_type == "section":
             return commission.calculate_section(subtotal)
 

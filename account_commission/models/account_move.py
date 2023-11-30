@@ -221,7 +221,7 @@ class AccountInvoiceLineAgent(models.Model):
     def _compute_amount(self):
         for line in self:
             inv_line = line.object_id
-            line.amount = line._get_commission_amount(
+            line.amount = line.with_context(inv_line=inv_line)._get_commission_amount(
                 line.commission_id,
                 inv_line.price_subtotal,
                 inv_line.product_id,
