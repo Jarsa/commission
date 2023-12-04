@@ -6,7 +6,7 @@
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 from odoo.tests import Form
-from odoo.tools import groupby, float_compare
+from odoo.tools import groupby
 
 
 class CommissionSettlement(models.Model):
@@ -35,12 +35,6 @@ class CommissionSettlement(models.Model):
         comodel_name="account.move",
         compute="_compute_invoice_id",
     )
-    total_sales = fields.Monetary(
-        string="Total Sales",
-        compute="_compute_total_sales",
-        store=True,
-        help="Total sales amount for this settlement.",
-    )
 
     def _compute_can_edit(self):
         """Make settlements coming from invoice lines to not be editable."""
@@ -54,11 +48,6 @@ class CommissionSettlement(models.Model):
             record.invoice_id = record.invoice_line_ids.filtered(
                 lambda x: x.parent_state != "cancel"
             )[:1].move_id
-
-    @api.depends("line_ids.invoice_line_id")
-    def _compute_total_sales(self):
-        for record in self:
-            record.total_sales = sum(record.line_ids.mapped("invoice_line_id.amount_total"))
 
     def action_cancel(self):
         """Check if any settlement has been invoiced."""
@@ -188,18 +177,5 @@ class SettlementLine(models.Model):
 
     @api.depends("invoice_agent_line_id")
     def _compute_settled_amount(self):
-        total_sales = self.settelment_id.total_sales
-        agent_goal = self.settelment_id.agent_id.sales_goal
-        company_goal = self.env.company.sales_goal
-        if float_compare(total_sales, company_goal, precision_digits=2) >= 0 or if float_compare(total_sales, agent_goal, precision_digits=2) >= 0::
-            percentage = 1
-        else:
-            percentage_archived = (total_sales * 100) / agent_goal
-            if float_compare(percentage_archived, 80, precision_digits=2) >= 0:
-                percentage = 0.8
-            elif float_compare(percentage_archived, 40, precision_digits=2) >= 0:
-                percentage = percentage_archived / 100
-            elif float_compare(percentage_archived, 40, precision_digits=2) == -1:
-                percentage = 0
         for record in self.filtered("invoice_agent_line_id"):
-            record.settled_amount = record.invoice_agent_line_id.amount * percentage
+            record.settled_amount = record.invoice_agent_line_id.amount

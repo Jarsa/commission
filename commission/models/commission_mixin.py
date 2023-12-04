@@ -154,20 +154,7 @@ class CommissionLineMixin(models.AbstractModel):
                     break
             subtotal = subtotal - cost
         if commission.commission_type == "fixed":
-            percent = commission.fix_qty
-            cust_line = inv_line.move_id.line_ids.filtered(lambda s: s.account_id.user_type_id.type == "receivable")
-            days_to_payment = (max(cust_line.matched_debit_ids.mapped("max_date")) - inv_line.date_due).days
-            if inv_line and days_to_payment > 90:
-                percent = commission.fix_qty - 2
-            elif inv_line and days_to_payment > 120:
-                percent = commission.fix_qty - 4
-            elif inv_line and days_to_payment > 150:
-                percent = commission.fix_qty - 6
-            elif inv_line and days_to_payment > 180:
-                percent = commission.fix_qty - 8
-            elif inv_line and days_to_payment > 181:
-                percent = 0
-            return subtotal * (percent / 100.0)
+            return subtotal * (commission.fix_qty / 100.0)
         elif commission.commission_type == "section":
             return commission.calculate_section(subtotal)
 
