@@ -143,11 +143,16 @@ class CommissionLineMixin(models.AbstractModel):
         self.ensure_one()
         if product.commission_free or not commission:
             return 0.0
-        if commission.amount_base_type == "net_amount":
-            # If subtotal (sale_price * quantity) is less than
-            # standard_price * quantity, it means that we are selling at
-            # lower price than we bought, so set amount_base to 0
-            subtotal = max([0, subtotal - product.standard_price * quantity])
+        if commission.amount_base_type == "net_amount" and self.env.context.get("inv_line"):
+            qty_to_take = quantity
+            cost = 0
+            inv_line = self.env.context["inv_line"]
+            for so_line in inv_line.sale_line_ids.filtered(lambda s: s.supplierinfo_ids):
+                cost += so_line.purchase_price * min(so_line.product_uom_qty, qty_to_take)
+                qty_to_take -= so_line.product_uom_qty
+                if qty_to_take <= 0:
+                    break
+            subtotal = subtotal - cost
         if commission.commission_type == "fixed":
             return subtotal * (commission.fix_qty / 100.0)
         elif commission.commission_type == "section":
