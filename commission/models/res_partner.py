@@ -38,6 +38,8 @@ class ResPartner(models.Model):
     )
     settlement = fields.Selection(
         selection=[
+            ("immediate", "Immediate"),
+            ("weekly", "Weekly"),
             ("biweekly", "Bi-weekly"),
             ("monthly", "Monthly"),
             ("quaterly", "Quarterly"),
