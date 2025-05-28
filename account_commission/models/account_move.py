@@ -83,6 +83,17 @@ class AccountMove(models.Model):
         self.mapped("line_ids.settlement_id").write({"state": "except_invoice"})
         return super().button_cancel()
 
+    def button_draft(self):
+        """Check settled lines and put settlements associated to the invoices in
+        exception.
+        """
+        if any(self.mapped("invoice_line_ids.any_settled")):
+            raise exceptions.ValidationError(
+                self.env._("You can't cancel an invoice with settled lines"),
+            )
+        self.mapped("line_ids.settlement_id").write({"state": "except_invoice"})
+        return super().button_draft()
+
     def recompute_lines_agents(self):
         self.mapped("invoice_line_ids").recompute_agents()
 
